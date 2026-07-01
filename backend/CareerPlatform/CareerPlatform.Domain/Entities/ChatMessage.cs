@@ -1,0 +1,16 @@
+namespace CareerPlatform.Domain.Entities;
+
+public class ChatMessage
+{
+    public Guid MessageId { get; set; }
+
+    public Guid SessionId { get; set; }
+
+    public string Role { get; set; } = string.Empty;
+
+    public string Content { get; set; } = string.Empty;
+
+    public DateTime CreatedAt { get; set; }
+
+    public ChatSession ChatSession { get; set; } = null!;
+}
