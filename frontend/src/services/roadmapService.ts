@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "../api/api";
 
 export type LearningResource = {
   learningResourceId: number;
@@ -31,7 +31,7 @@ export type Roadmap = {
 };
 
 export async function getRoadmap() {
-  const { data } = await api.get<Roadmap>("/roadmap");
+  const { data } = await api.get<Roadmap>("/api/roadmap");
   return data;
 }
 
@@ -39,7 +39,7 @@ export async function updateRoadmapProgress(
   skillNodeId: number,
   isCompleted: boolean,
 ) {
-  const { data } = await api.put<Roadmap>("/roadmap/progress", {
+  const { data } = await api.put<Roadmap>("/api/roadmap/progress", {
     skillNodeId,
     isCompleted,
   });

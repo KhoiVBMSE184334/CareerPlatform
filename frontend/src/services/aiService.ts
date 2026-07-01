@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "../api/api";
 
 export type ChatMessage = {
   messageId: string;
@@ -20,11 +20,11 @@ export type ChatResponse = {
 };
 
 export async function sendMentorMessage(message: string) {
-  const { data } = await api.post<ChatResponse>("/chat", { message });
+  const { data } = await api.post<ChatResponse>("/api/chat", { message });
   return data;
 }
 
 export async function getChatSessions() {
-  const { data } = await api.get<ChatSession[]>("/chat/sessions");
+  const { data } = await api.get<ChatSession[]>("/api/chat/sessions");
   return data;
 }

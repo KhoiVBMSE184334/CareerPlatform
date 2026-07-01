@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "../api/api";
 
 export type AdminLearningResource = {
   resourceId: number;
@@ -19,11 +19,11 @@ export type AdminSkillNode = {
 };
 
 export async function getAdminSkillNodes() {
-  const { data } = await api.get<AdminSkillNode[]>("/skillnodes");
+  const { data } = await api.get<AdminSkillNode[]>("/api/skillnodes");
   return data;
 }
 
 export async function getAdminSkillNode(skillNodeId: number) {
-  const { data } = await api.get<AdminSkillNode>(`/skillnodes/${skillNodeId}`);
+  const { data } = await api.get<AdminSkillNode>(`/api/skillnodes/${skillNodeId}`);
   return data;
 }

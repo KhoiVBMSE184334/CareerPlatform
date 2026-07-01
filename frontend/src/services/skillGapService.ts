@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "../api/api";
 
 export type SkillGapSkill = {
   skillNodeId: number;
@@ -27,11 +27,11 @@ export type SkillGapRequest = {
 };
 
 export async function analyzeSkillGap(request: SkillGapRequest) {
-  const { data } = await api.post<SkillGapResult>("/skillgap/analyze", request);
+  const { data } = await api.post<SkillGapResult>("/api/skillgap/analyze", request);
   return data;
 }
 
 export async function getMySkillGapResult() {
-  const { data } = await api.get<SkillGapResult>("/skillgap/my-result");
+  const { data } = await api.get<SkillGapResult>("/api/skillgap/my-result");
   return data;
 }

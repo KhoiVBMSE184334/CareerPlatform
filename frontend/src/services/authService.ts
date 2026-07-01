@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "../api/api";
 import {
   getRoleFromToken,
   saveAuthSession,
@@ -39,7 +39,7 @@ function createSession(response: AuthResponse): AuthSession {
 }
 
 export async function login(request: LoginRequest) {
-  const { data } = await api.post<AuthResponse>("/auth/login", request);
+  const { data } = await api.post<AuthResponse>("/api/auth/login", request);
   const session = createSession(data);
 
   saveAuthSession(session);
@@ -48,7 +48,7 @@ export async function login(request: LoginRequest) {
 }
 
 export async function register(request: RegisterRequest) {
-  const { data } = await api.post<AuthResponse>("/auth/register", request);
+  const { data } = await api.post<AuthResponse>("/api/auth/register", request);
   const session = createSession(data);
 
   saveAuthSession(session);

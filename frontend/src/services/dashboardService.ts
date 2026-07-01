@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "../api/api";
 import type { CareerPath } from "./careerPathService";
 import type { ChatSession } from "./aiService";
 
@@ -21,11 +21,11 @@ export type AdminDashboard = {
 };
 
 export async function getStudentDashboard() {
-  const { data } = await api.get<StudentDashboard>("/dashboard/student");
+  const { data } = await api.get<StudentDashboard>("/api/dashboard/student");
   return data;
 }
 
 export async function getAdminDashboard() {
-  const { data } = await api.get<AdminDashboard>("/dashboard/admin");
+  const { data } = await api.get<AdminDashboard>("/api/dashboard/admin");
   return data;
 }
