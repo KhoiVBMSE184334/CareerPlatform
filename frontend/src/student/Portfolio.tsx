@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { isAxiosError } from "axios";
 
 import {
   deletePortfolioProject,
@@ -14,6 +15,70 @@ import {
   PageHeader,
   SectionCard,
 } from "../components/common";
+
+function getApiErrorMessage(error: unknown) {
+  if (isAxiosError(error)) {
+    const data = error.response?.data as
+      | string
+      | {
+          message?: string;
+          title?: string;
+          errors?: Record<string, string[]>;
+        }
+      | undefined;
+
+    if (typeof data === "string") {
+      return data.trim() || "Unable to import GitHub portfolio.";
+    }
+
+    if (data?.message) {
+      return data.message;
+    }
+
+    const firstError = Object.values(data?.errors ?? {})[0]?.[0];
+
+    if (firstError) {
+      return firstError;
+    }
+
+    if (data?.title) {
+      return data.title;
+    }
+
+    if (error.message) {
+      return error.message;
+    }
+  }
+
+  return "Unable to import GitHub portfolio.";
+}
+
+function parseGitHubUsername(input: string) {
+  const value = input.trim();
+
+  if (!value) {
+    return "";
+  }
+
+  let username = value;
+
+  try {
+    const url = new URL(value);
+
+    if (!["github.com", "www.github.com"].includes(url.hostname.toLowerCase())) {
+      return "";
+    }
+
+    username = url.pathname.split("/").filter(Boolean)[0] ?? "";
+  } catch {
+    username = value.replace(/^@/, "");
+  }
+
+  const isValidGitHubUsername =
+    /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(username);
+
+  return isValidGitHubUsername ? username : "";
+}
 
 function GitHubEmptyIllustration() {
   return (
@@ -58,20 +123,26 @@ function Portfolio() {
     setError("");
     setSuccess("");
 
-    if (!githubUrl.trim()) {
-      setError("Enter a GitHub profile or repository URL.");
+    if (isImporting) {
+      return;
+    }
+
+    const githubUsername = parseGitHubUsername(githubUrl);
+
+    if (!githubUsername) {
+      setError("Enter a valid GitHub username or github.com profile URL.");
       return;
     }
 
     setIsImporting(true);
 
     try {
-      const importedProjects = await importGitHubPortfolio(githubUrl.trim());
+      const importedProjects = await importGitHubPortfolio(githubUsername);
       setProjects(importedProjects);
       setGithubUrl("");
       setSuccess("GitHub portfolio imported successfully.");
-    } catch {
-      setError("Unable to import GitHub portfolio.");
+    } catch (importError) {
+      setError(getApiErrorMessage(importError));
     } finally {
       setIsImporting(false);
     }
@@ -114,14 +185,14 @@ function Portfolio() {
           </p>
         ) : null}
         <label className="text-sm font-medium text-slate-700" htmlFor="github">
-          GitHub URL
+          GitHub URL or username
         </label>
         <div className="mt-1 flex flex-col gap-3 sm:flex-row">
           <input
             className="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
             id="github"
             onChange={(event) => setGithubUrl(event.target.value)}
-            placeholder="https://github.com/username"
+            placeholder="https://github.com/username or username"
             value={githubUrl}
           />
           <button

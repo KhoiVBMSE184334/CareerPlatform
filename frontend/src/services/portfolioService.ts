@@ -37,10 +37,10 @@ export async function getAdminPortfolioProject(projectId: string) {
   return data;
 }
 
-export async function importGitHubPortfolio(githubUrl: string) {
+export async function importGitHubPortfolio(githubUrlOrUsername: string) {
   const { data } = await api.post<PortfolioProject[]>(
     "/api/portfolio/import-github",
-    { githubUrl },
+    { githubUrlOrUsername },
   );
   return data;
 }
