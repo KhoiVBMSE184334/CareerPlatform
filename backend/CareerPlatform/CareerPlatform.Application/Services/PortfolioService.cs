@@ -2,6 +2,7 @@ using CareerPlatform.Application.DTOs.Portfolios;
 using CareerPlatform.Application.Interfaces;
 using CareerPlatform.Application.Interfaces.Services;
 using CareerPlatform.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace CareerPlatform.Application.Services;
 
@@ -40,16 +41,30 @@ public class PortfolioService : IPortfolioService
         ImportGitHubRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.GithubUrlOrUsername))
+        var githubUsername = NormalizeGitHubUsername(request.GithubUrlOrUsername);
+
+        if (string.IsNullOrWhiteSpace(githubUsername))
         {
-            throw new InvalidOperationException("GitHub profile URL or username is required.");
+            throw new InvalidOperationException("GitHub profile URL or username is invalid.");
         }
 
-        var repositories = await _gitHubService.GetPublicRepositoriesAsync(
-            request.GithubUrlOrUsername,
-            cancellationToken);
+        IReadOnlyList<GitHubRepoDto> repositories;
+
+        try
+        {
+            repositories = await _gitHubService.GetPublicRepositoriesAsync(
+                githubUsername,
+                cancellationToken);
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new InvalidOperationException(
+                "GitHub profile could not be loaded. Please check the username and try again.",
+                exception);
+        }
 
         var importedProjects = new List<PortfolioProject>();
+        var projectsByGithubUrl = new Dictionary<string, PortfolioProject>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var repository in repositories)
         {
@@ -63,10 +78,13 @@ public class PortfolioService : IPortfolioService
                     cancellationToken);
             }
 
-            var existingProject = await _unitOfWork.PortfolioProjects.GetByGithubUrlAsync(
-                userId,
-                repository.GithubUrl,
-                cancellationToken);
+            if (!projectsByGithubUrl.TryGetValue(repository.GithubUrl, out var existingProject))
+            {
+                existingProject = await _unitOfWork.PortfolioProjects.GetByGithubUrlAsync(
+                    userId,
+                    repository.GithubUrl,
+                    cancellationToken);
+            }
 
             if (existingProject is null)
             {
@@ -86,11 +104,20 @@ public class PortfolioService : IPortfolioService
             existingProject.TechStack = repository.Language;
             existingProject.ImportedAt = DateTime.UtcNow;
 
-            _unitOfWork.PortfolioProjects.Update(existingProject);
+            projectsByGithubUrl[repository.GithubUrl] = existingProject;
             importedProjects.Add(existingProject);
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new InvalidOperationException(
+                "Portfolio import could not be saved because the project data changed. Please try importing again.",
+                exception);
+        }
 
         return importedProjects.Select(MapToDto).ToList();
     }
@@ -142,5 +169,47 @@ public class PortfolioService : IPortfolioService
             GithubUrl = project.GithubUrl,
             ImportedAt = project.ImportedAt
         };
+    }
+
+    private static string NormalizeGitHubUsername(string? githubUrlOrUsername)
+    {
+        if (string.IsNullOrWhiteSpace(githubUrlOrUsername))
+        {
+            return string.Empty;
+        }
+
+        var value = githubUrlOrUsername.Trim();
+        var username = value.TrimStart('@');
+
+        if (Uri.TryCreate(value.TrimEnd('/'), UriKind.Absolute, out var uri))
+        {
+            if (!string.Equals(uri.Host, "github.com", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(uri.Host, "www.github.com", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
+            username = uri.AbsolutePath
+                .Trim('/')
+                .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault() ?? string.Empty;
+        }
+
+        return IsValidGitHubUsername(username) ? username : string.Empty;
+    }
+
+    private static bool IsValidGitHubUsername(string username)
+    {
+        if (username.Length is < 1 or > 39)
+        {
+            return false;
+        }
+
+        if (username.StartsWith('-') || username.EndsWith('-'))
+        {
+            return false;
+        }
+
+        return username.All(character => char.IsAsciiLetterOrDigit(character) || character == '-');
     }
 }
